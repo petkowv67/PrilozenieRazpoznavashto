@@ -4,87 +4,131 @@ from PIL import Image
 import numpy as np
 import re
 
-st.set_page_config(page_title="OCR Съставки Checker", layout="centered")
+st.set_page_config(page_title="Съставки Analyzer", layout="centered")
 
-st.title("📷 Проверка на съставки")
-st.write("Качи снимка или въведи текст, за да открия потенциално вредни съставки (напр. E621).")
+st.title("📦 Анализ на съставки от етикети")
+st.write("Качи снимка, използвай камера или въведи текст за анализ.")
 
+# -----------------------------
+# РЕЖИМ
+# -----------------------------
 mode = st.radio("Избери метод:", ["📷 Снимка", "✍️ Текст", "🎥 Камера"])
 
-# Примерен списък с добавки за търсене
-harmful_ingredients = [
-    "E621", "E622", "E623", "E624", "E625",
-    "E102", "E110", "E122", "E124", "E129",
-    "E211", "E212", "E213"
-]
+# -----------------------------
+# БАЗА ДАННИ
+# -----------------------------
+harmful_ingredients = {
+    "E621": "Мононатриев глутамат – може да предизвика чувствителност при някои хора.",
+    "E102": "Тартразин – изкуствен оцветител, свързан с хиперактивност.",
+    "E110": "Оцветител – може да предизвика алергии.",
+    "E124": "Червен оцветител – спорен за здравето.",
+    "E211": "Натриев бензоат – консервант, който може да образува вредни съединения."
+}
 
-def check_ingredients(text):
-    found = []
-    for ingredient in harmful_ingredients:
-        if re.search(rf"\b{ingredient}\b", text, re.IGNORECASE):
-            found.append(ingredient)
-    return found
+good_ingredients = {
+    "витамин C": "Подсилва имунната система.",
+    "витамин D": "Подпомага костите и имунитета.",
+    "фибри": "Подобряват храносмилането.",
+    "протеин": "Важно за мускулите.",
+    "калций": "Здрави кости и зъби."
+}
 
-# --- РЕЖИМ 1: СНИМКА ---
+# -----------------------------
+# АНАЛИЗ ФУНКЦИЯ
+# -----------------------------
+def analyze_text(text):
+    found_bad = []
+    found_good = []
+
+    for ing, desc in harmful_ingredients.items():
+        if re.search(rf"\b{re.escape(ing)}\b", text, re.IGNORECASE):
+            found_bad.append((ing, desc))
+
+    for ing, desc in good_ingredients.items():
+        if re.search(rf"\b{re.escape(ing)}\b", text, re.IGNORECASE):
+            found_good.append((ing, desc))
+
+    return found_good, found_bad
+
+def display_results(text):
+    st.subheader("📄 Разпознат текст")
+    st.write(text)
+
+    good, bad = analyze_text(text)
+
+    if good:
+        st.subheader("✅ Полезни съставки")
+        for g, d in good:
+            st.success(f"{g} → {d}")
+
+    if bad:
+        st.subheader("⚠️ Вредни съставки")
+        for b, d in bad:
+            st.error(f"{b} → {d}")
+
+    if not good and not bad:
+        st.info("Няма разпознати съставки от базата данни.")
+
+# -----------------------------
+# OCR INIT (само веднъж)
+# -----------------------------
+@st.cache_resource
+def load_reader():
+    return easyocr.Reader(['en', 'bg'])
+
+reader = load_reader()
+
+# -----------------------------
+# 📷 СНИМКА
+# -----------------------------
 if mode == "📷 Снимка":
-    uploaded_file = st.file_uploader("Качи изображение", type=["jpg", "jpeg", "png"])
+    uploaded_file = st.file_uploader("Качи снимка на етикет", type=["jpg", "jpeg", "png"])
 
-    if uploaded_file is not None:
+    if uploaded_file:
         image = Image.open(uploaded_file)
-        st.image(image, caption="Качено изображение", use_column_width=True)
+        st.image(image, caption="Качена снимка", use_column_width=True)
 
-        with st.spinner("🔍 Разпознаване на текст..."):
-            reader = easyocr.Reader(['en', 'bg'])
+        with st.spinner("🔍 Анализ..."):
             img_array = np.array(image)
             results = reader.readtext(img_array, detail=0)
-            extracted_text = " ".join(results)
+            text = " ".join(results)
 
-        st.subheader("📄 Разпознат текст:")
-        st.write(extracted_text)
+        display_results(text)
 
-        found = check_ingredients(extracted_text)
-
-        st.subheader("⚠️ Намерени потенциално вредни съставки:")
-        if found:
-            st.error(f"Открити са: {', '.join(found)}")
-        else:
-            st.success("Не са открити вредни съставки от списъка ✅")
-
-# --- РЕЖИМ 2: ТЕКСТ ---
+# -----------------------------
+# ✍️ ТЕКСТ
+# -----------------------------
 elif mode == "✍️ Текст":
-    user_text = st.text_area("Въведи текст със съставки:")
+    user_text = st.text_area("Въведи съставки:")
 
     if st.button("Провери"):
         if user_text.strip():
-            st.subheader("📄 Въведен текст:")
-            st.write(user_text)
-
-            found = check_ingredients(user_text)
-
-            st.subheader("⚠️ Намерени потенциално вредни съставки:")
-            if found:
-                st.error(f"Открити са: {', '.join(found)}")
-            else:
-                st.success("Не са открити вредни съставки от списъка ✅")
+            display_results(user_text)
         else:
-            st.warning("Моля, въведи текст.")
+            st.warning("Моля въведи текст.")
 
-st.subheader("ℹ️ Бележка:")
-st.write("Това е базова проверка. За по-точни резултати може да се разшири списъкът със съставки.")
+# -----------------------------
+# 🎥 КАМЕРА
+# -----------------------------
 elif mode == "🎥 Камера":
-    camera_image = st.camera_input("Сканирай етикет с камерата")
+    camera_image = st.camera_input("Сканирай етикет")
 
-    if camera_image is not None:
+    if camera_image:
         image = Image.open(camera_image)
         st.image(image, caption="Снимка от камера", use_column_width=True)
 
-        with st.spinner("🔍 Разпознаване..."):
-            reader = easyocr.Reader(['en', 'bg'])
+        with st.spinner("🔍 Анализ..."):
             img_array = np.array(image)
             results = reader.readtext(img_array, detail=0)
-            extracted_text = " ".join(results)
+            text = " ".join(results)
 
-        display_results(extracted_text)
+        display_results(text)
+
+# -----------------------------
+# INFO
+# -----------------------------
+st.markdown("---")
+st.caption("⚠️ Анализът е информативен и не е медицински съвет.")
 
 
 
