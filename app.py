@@ -1,3 +1,4 @@
+
 import streamlit as st
 import easyocr
 from PIL import Image
@@ -7,26 +8,64 @@ import re
 st.set_page_config(page_title="OCR Съставки Checker", layout="centered")
 
 st.title("📷 Проверка на съставки")
-st.write("Качи снимка или въведи текст, за да открия потенциално вредни съставки (напр. E621).")
+st.write("Качи снимка или въведи текст, за да анализирам съставките.")
 
-# избор на режим
 mode = st.radio("Избери метод:", ["📷 Снимка", "✍️ Текст"])
 
-# Примерен списък с добавки за търсене
-harmful_ingredients = [
-    "E621", "E622", "E623", "E624", "E625",
-    "E102", "E110", "E122", "E124", "E129",
-    "E211", "E212", "E213"
-]
+# ❌ Вредни съставки + описание
+harmful_ingredients = {
+    "E621": "Мононатриев глутамат – може да предизвика главоболие и чувствителност при някои хора.",
+    "E102": "Тартразин – изкуствен оцветител, свързан с хиперактивност.",
+    "E110": "Жълт залез – може да причини алергични реакции.",
+    "E124": "Понсо 4R – потенциално вреден оцветител.",
+    "E211": "Натриев бензоат – консервант, който при определени условия може да образува бензен."
+}
 
-def check_ingredients(text):
-    found = []
-    for ingredient in harmful_ingredients:
+# ✅ Полезни съставки + описание
+good_ingredients = {
+    "витамин C": "Подсилва имунната система.",
+    "витамин D": "Подпомага здравето на костите.",
+    "фибри": "Подобряват храносмилането.",
+    "протеин": "Помага за изграждане на мускули.",
+    "калций": "Важен за костите и зъбите."
+}
+
+def analyze_text(text):
+    found_bad = []
+    found_good = []
+
+    # търси вредни
+    for ingredient, desc in harmful_ingredients.items():
         if re.search(rf"\b{ingredient}\b", text, re.IGNORECASE):
-            found.append(ingredient)
-    return found
+            found_bad.append((ingredient, desc))
 
-# --- РЕЖИМ 1: СНИМКА ---
+    # търси полезни
+    for ingredient, desc in good_ingredients.items():
+        if re.search(rf"\b{ingredient}\b", text, re.IGNORECASE):
+            found_good.append((ingredient, desc))
+
+    return found_good, found_bad
+
+def display_results(text):
+    st.subheader("📄 Текст:")
+    st.write(text)
+
+    good, bad = analyze_text(text)
+
+    if good:
+        st.subheader("✅ Полезни съставки:")
+        for ing, desc in good:
+            st.success(f"{ing} → {desc}")
+
+    if bad:
+        st.subheader("⚠️ Потенциално вредни съставки:")
+        for ing, desc in bad:
+            st.error(f"{ing} → {desc}")
+
+    if not good and not bad:
+        st.info("Не са открити разпознати съставки от списъка.")
+
+# --- СНИМКА ---
 if mode == "📷 Снимка":
     uploaded_file = st.file_uploader("Качи изображение", type=["jpg", "jpeg", "png"])
 
@@ -40,35 +79,17 @@ if mode == "📷 Снимка":
             results = reader.readtext(img_array, detail=0)
             extracted_text = " ".join(results)
 
-        st.subheader("📄 Разпознат текст:")
-        st.write(extracted_text)
+        display_results(extracted_text)
 
-        found = check_ingredients(extracted_text)
-
-        st.subheader("⚠️ Намерени потенциално вредни съставки:")
-        if found:
-            st.error(f"Открити са: {', '.join(found)}")
-        else:
-            st.success("Не са открити вредни съставки от списъка ✅")
-
-# --- РЕЖИМ 2: ТЕКСТ ---
+# --- ТЕКСТ ---
 elif mode == "✍️ Текст":
     user_text = st.text_area("Въведи текст със съставки:")
 
     if st.button("Провери"):
         if user_text.strip():
-            st.subheader("📄 Въведен текст:")
-            st.write(user_text)
-
-            found = check_ingredients(user_text)
-
-            st.subheader("⚠️ Намерени потенциално вредни съставки:")
-            if found:
-                st.error(f"Открити са: {', '.join(found)}")
-            else:
-                st.success("Не са открити вредни съставки от списъка ✅")
+            display_results(user_text)
         else:
             st.warning("Моля, въведи текст.")
 
 st.subheader("ℹ️ Бележка:")
-st.write("Това е базова проверка. За по-точни резултати може да се разшири списъкът със съставки.")
+st.write("Анализът е базиран на предварително зададени списъци и не е медицински съвет.")
