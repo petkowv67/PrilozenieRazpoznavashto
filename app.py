@@ -85,8 +85,10 @@ st.write("Това е базова проверка. За по-точни рез
 
 import random
 
+st.sidebar.markdown("---")
 st.sidebar.title("🎮 Tic Tac Toe")
 
+# init
 if "board" not in st.session_state:
     st.session_state.board = [""] * 9
 if "player_turn" not in st.session_state:
@@ -118,10 +120,27 @@ def reset_game():
     st.session_state.player_turn = True
     st.session_state.winner = None
 
+# 🎯 ПОКАЗВАНЕ НА РЕДА
+if st.session_state.winner is None:
+    if st.session_state.player_turn:
+        st.sidebar.info("👉 Ти си на ход (X)")
+    else:
+        st.sidebar.warning("🤖 AI мисли...")
+else:
+    if st.session_state.winner == "Draw":
+        st.sidebar.info("Равенство 🤝")
+    else:
+        st.sidebar.success(f"Победител: {st.session_state.winner}")
+
+# UI
 cols = st.sidebar.columns(3)
 for i in range(9):
     if cols[i % 3].button(st.session_state.board[i] or " ", key=f"btn_{i}"):
-        if st.session_state.board[i] == "" and st.session_state.winner is None:
+        if (
+            st.session_state.board[i] == "" 
+            and st.session_state.winner is None 
+            and st.session_state.player_turn
+        ):
             st.session_state.board[i] = "X"
             st.session_state.player_turn = False
 
@@ -131,11 +150,5 @@ for i in range(9):
                 ai_move()
                 st.session_state.winner = check_winner(st.session_state.board)
                 st.session_state.player_turn = True
-
-if st.session_state.winner:
-    if st.session_state.winner == "Draw":
-        st.sidebar.info("Равенство 🤝")
-    else:
-        st.sidebar.success(f"Победител: {st.session_state.winner}")
 
 st.sidebar.button("🔄 Нова игра", on_click=reset_game)
