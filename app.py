@@ -82,7 +82,7 @@ st.write("Това е базова проверка. За по-точни рез
 
 
 
-
+import time
 import random
 
 st.sidebar.markdown("---")
@@ -110,11 +110,11 @@ def check_winner(board):
     return None
 
 def ai_move():
-    empty = [i for i, x in enumerate(st.session_state.board) if x == ""]
+     empty = [i for i, x in enumerate(st.session_state.board) if x == ""]
     if empty:
+        time.sleep(0.5)  # максимум 0.5 сек (можеш 0.2 ако искаш още по-бързо)
         move = random.choice(empty)
         st.session_state.board[move] = "O"
-
 def reset_game():
     st.session_state.board = [""] * 9
     st.session_state.player_turn = True
