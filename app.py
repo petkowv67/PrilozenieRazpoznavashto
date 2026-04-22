@@ -110,9 +110,9 @@ def check_winner(board):
     return None
 
 def ai_move():
-     empty = [i for i, x in enumerate(st.session_state.board) if x == ""]
+    empty = [i for i, x in enumerate(st.session_state.board) if x == ""]
     if empty:
-        time.sleep(0.5)  # максимум 0.5 сек (можеш 0.2 ако искаш още по-бързо)
+        time.sleep(0.5)
         move = random.choice(empty)
         st.session_state.board[move] = "O"
 def reset_game():
