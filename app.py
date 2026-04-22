@@ -9,8 +9,7 @@ st.set_page_config(page_title="OCR Съставки Checker", layout="centered")
 st.title("📷 Проверка на съставки")
 st.write("Качи снимка или въведи текст, за да открия потенциално вредни съставки (напр. E621).")
 
-# избор на режим
-mode = st.radio("Избери метод:", ["📷 Снимка", "✍️ Текст"])
+mode = st.radio("Избери метод:", ["📷 Снимка", "✍️ Текст", "🎥 Камера"])
 
 # Примерен списък с добавки за търсене
 harmful_ingredients = [
@@ -72,7 +71,20 @@ elif mode == "✍️ Текст":
 
 st.subheader("ℹ️ Бележка:")
 st.write("Това е базова проверка. За по-точни резултати може да се разшири списъкът със съставки.")
+elif mode == "🎥 Камера":
+    camera_image = st.camera_input("Сканирай етикет с камерата")
 
+    if camera_image is not None:
+        image = Image.open(camera_image)
+        st.image(image, caption="Снимка от камера", use_column_width=True)
+
+        with st.spinner("🔍 Разпознаване..."):
+            reader = easyocr.Reader(['en', 'bg'])
+            img_array = np.array(image)
+            results = reader.readtext(img_array, detail=0)
+            extracted_text = " ".join(results)
+
+        display_results(extracted_text)
 
 
 
